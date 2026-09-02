@@ -65,7 +65,6 @@ export function LoginForm({
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="ban@vidu.com"
               className="h-11 w-full rounded-lg border border-border bg-background px-3 text-[13px] text-text-primary outline-none focus:border-brand-orange-2 focus:ring-2 focus:ring-brand-orange-2/30"
             />
           </div>
@@ -81,7 +80,6 @@ export function LoginForm({
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
               className="h-11 w-full rounded-lg border border-border bg-background px-3 text-[13px] text-text-primary outline-none focus:border-brand-orange-2 focus:ring-2 focus:ring-brand-orange-2/30"
             />
           </div>
