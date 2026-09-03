@@ -9,6 +9,8 @@ import { formatSessionDate } from "@/lib/format/schedule";
 interface SessionOptionRow {
   id: string;
   session_date: string;
+  trainer_profile_ids: string[];
+  mentor_profile_ids: string[];
   session_blocks: { title: string; sort_order: number }[];
 }
 
@@ -35,7 +37,7 @@ export default async function PeoplePage() {
     supabase.from("groups").select("id, name").eq("program_id", user.programId).order("name"),
     supabase
       .from("sessions")
-      .select("id, session_date, session_blocks(title, sort_order)")
+      .select("id, session_date, trainer_profile_ids, mentor_profile_ids, session_blocks(title, sort_order)")
       .eq("program_id", user.programId)
       .order("session_date", { ascending: true })
       .order("sort_order", { referencedTable: "session_blocks", ascending: true })
@@ -54,6 +56,27 @@ export default async function PeoplePage() {
       s.session_blocks.map((b) => b.title).join(" · ") || "Chưa có learning block"
     }`,
   }));
+
+  // "Nội dung học" ở Quản lý thành viên (theo yêu cầu của bạn — sửa/xem
+  // ngay tại đây, link 2 chiều với Thời khóa biểu) — Trainer đọc/ghi
+  // sessions.trainer_profile_ids, Mentor ZPS/Sinh viên đọc/ghi
+  // sessions.mentor_profile_ids. Đây vẫn là CÙNG MỘT dữ liệu thật với
+  // Thời khóa biểu (không phải bản sao riêng), nên sửa ở đâu cũng ra
+  // kết quả giống nhau.
+  const sessionIdsByTrainerProfile = new Map<string, string[]>();
+  const sessionIdsByMentorProfile = new Map<string, string[]>();
+  for (const s of sessionRows ?? []) {
+    for (const pid of s.trainer_profile_ids) {
+      const list = sessionIdsByTrainerProfile.get(pid) ?? [];
+      list.push(s.id);
+      sessionIdsByTrainerProfile.set(pid, list);
+    }
+    for (const pid of s.mentor_profile_ids) {
+      const list = sessionIdsByMentorProfile.get(pid) ?? [];
+      list.push(s.id);
+      sessionIdsByMentorProfile.set(pid, list);
+    }
+  }
 
   // Section 5.3 — "Assigned group(s)" is read-only on the member's own
   // profile; here (People & Access) is where Owner actually sets it.
@@ -99,12 +122,19 @@ export default async function PeoplePage() {
     }
     const trainerGroupNames = member.role === "trainer" ? (trainerGroupNamesByProfile.get(profileId) ?? []) : null;
     const trainerGroupIds = member.role === "trainer" ? (trainerGroupIdsByProfile.get(profileId) ?? []) : null;
+    const sessionIds =
+      member.role === "trainer"
+        ? (sessionIdsByTrainerProfile.get(profileId) ?? [])
+        : member.role === "mentor_zps" || member.role === "mentor_student"
+          ? (sessionIdsByMentorProfile.get(profileId) ?? [])
+          : null;
     return {
       ...member,
       groupId,
       groupName: groupId ? (groupNameById.get(groupId) ?? null) : null,
       trainerGroupNames,
       trainerGroupIds,
+      sessionIds,
     };
   });
 
@@ -123,6 +153,7 @@ export default async function PeoplePage() {
                 <tr>
                   <th className="px-5 py-3 font-semibold">Thành viên</th>
                   <th className="px-5 py-3 font-semibold">Vai trò</th>
+                  <th className="px-5 py-3 font-semibold">Nội dung học</th>
                   <th className="px-5 py-3 font-semibold">Nhóm</th>
                   <th className="px-5 py-3 font-semibold">Trạng thái</th>
                   <th className="px-5 py-3 font-semibold">Hành động</th>
@@ -137,11 +168,12 @@ export default async function PeoplePage() {
                     editable
                     currentUserId={user.id}
                     groups={groupList}
+                    sessionOptions={sessionOptions}
                   />
                 ))}
                 {membersWithGroup.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-5 py-8 text-center text-text-secondary">
+                    <td colSpan={6} className="px-5 py-8 text-center text-text-secondary">
                       Chưa có thành viên nào.
                     </td>
                   </tr>

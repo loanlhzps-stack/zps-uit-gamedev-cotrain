@@ -1,4 +1,5 @@
 import Link from "next/link";
+import * as React from "react";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, MapPin, ExternalLink } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -177,20 +178,46 @@ export default async function SessionDetailPage({
 
           <div>
             <h3 className="mb-1 text-[13px] font-bold text-text-primary">Trainer phụ trách</h3>
-            <p className="text-[13px] text-text-secondary">
-              {trainerProfiles && trainerProfiles.length > 0
-                ? trainerProfiles.map((t) => t.display_name).join(", ")
-                : "Chưa gán Trainer."}
-            </p>
+            {trainerProfiles && trainerProfiles.length > 0 ? (
+              <p className="flex flex-wrap gap-x-1.5 text-[13px] text-text-secondary">
+                {trainerProfiles.map((t, i) => (
+                  <React.Fragment key={t.id}>
+                    {i > 0 && ", "}
+                    {user.role === "owner" ? (
+                      <Link href={`/app/people#member-${t.id}`} className="text-brand-orange-3 hover:underline">
+                        {t.display_name}
+                      </Link>
+                    ) : (
+                      t.display_name
+                    )}
+                  </React.Fragment>
+                ))}
+              </p>
+            ) : (
+              <p className="text-[13px] text-text-secondary">Chưa gán Trainer.</p>
+            )}
           </div>
 
           <div>
             <h3 className="mb-1 text-[13px] font-bold text-text-primary">Mentor phụ trách</h3>
-            <p className="text-[13px] text-text-secondary">
-              {mentorProfiles && mentorProfiles.length > 0
-                ? mentorProfiles.map((m) => m.display_name).join(", ")
-                : "Chưa gán Mentor."}
-            </p>
+            {mentorProfiles && mentorProfiles.length > 0 ? (
+              <p className="flex flex-wrap gap-x-1.5 text-[13px] text-text-secondary">
+                {mentorProfiles.map((m, i) => (
+                  <React.Fragment key={m.id}>
+                    {i > 0 && ", "}
+                    {user.role === "owner" ? (
+                      <Link href={`/app/people#member-${m.id}`} className="text-brand-orange-3 hover:underline">
+                        {m.display_name}
+                      </Link>
+                    ) : (
+                      m.display_name
+                    )}
+                  </React.Fragment>
+                ))}
+              </p>
+            ) : (
+              <p className="text-[13px] text-text-secondary">Chưa gán Mentor.</p>
+            )}
           </div>
 
           {showSurvey && (

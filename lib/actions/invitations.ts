@@ -375,6 +375,56 @@ export async function updateTrainerGroups(profileId: string, programId: string, 
 }
 
 /**
+ * "Nội dung học" (buổi phụ trách) — theo yêu cầu của bạn, sửa được ngay
+ * tại Quản lý thành viên cho cả Trainer VÀ Mentor ZPS/Sinh viên, cùng một
+ * dữ liệu thật với Thời khóa biểu (sessions.trainer_profile_ids cho
+ * Trainer, sessions.mentor_profile_ids cho Mentor) — không phải bản sao
+ * riêng, sửa ở đâu cũng ra kết quả giống nhau ở chỗ kia. Nhận thẳng danh
+ * sách sessionIds (thay toàn bộ) vì 1 người có thể phụ trách nhiều buổi.
+ */
+export async function updateMemberSessions(
+  profileId: string,
+  programId: string,
+  role: Role,
+  sessionIds: string[]
+): Promise<ActionResult> {
+  const column = role === "trainer" ? "trainer_profile_ids" : role === "mentor_zps" || role === "mentor_student" ? "mentor_profile_ids" : null;
+  if (!column) {
+    return { error: "Vai trò này không gán theo buổi học." };
+  }
+  const guard = await requireOwner(programId);
+  if (!guard.ok) return { error: guard.error };
+  const { supabase } = guard;
+
+  const { data: programSessions, error: fetchError } = await supabase
+    .from("sessions")
+    .select(`id, ${column}`)
+    .eq("program_id", programId)
+    .returns<{ id: string; trainer_profile_ids?: string[]; mentor_profile_ids?: string[] }[]>();
+  if (fetchError) return { error: fetchError.message };
+
+  const targetSet = new Set(sessionIds);
+  const updates = (programSessions ?? []).flatMap((s) => {
+    const current: string[] = (column === "trainer_profile_ids" ? s.trainer_profile_ids : s.mentor_profile_ids) ?? [];
+    const isAssigned = current.includes(profileId);
+    const shouldBeAssigned = targetSet.has(s.id);
+    if (isAssigned === shouldBeAssigned) return [];
+    const next = shouldBeAssigned ? [...current, profileId] : current.filter((id) => id !== profileId);
+    return [{ id: s.id, [column]: next }];
+  });
+
+  for (const update of updates) {
+    const { id, ...fields } = update;
+    const { error } = await supabase.from("sessions").update(fields).eq("id", id);
+    if (error) return { error: error.message };
+  }
+
+  revalidatePath("/app/people");
+  revalidatePath("/app/schedule");
+  return {};
+}
+
+/**
  * "Đặt lại mật khẩu" — Owner-only (theo yêu cầu của bạn, thay cho việc
  * dùng lại inviteMember/re-invite khi ai đó quên mật khẩu: re-invite sẽ
  * gọi lại admin.createUser/inviteUserByEmail và có thể gửi lại mail —

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
@@ -10,6 +11,7 @@ import {
   changeMemberStatus,
   changeMemberGroup,
   updateTrainerGroups,
+  updateMemberSessions,
   resetMemberPassword,
 } from "@/lib/actions/invitations";
 
@@ -30,6 +32,10 @@ export interface MemberRowData {
   // xem updateTrainerGroups.
   trainerGroupNames?: string[] | null;
   trainerGroupIds?: string[] | null;
+  // Trainer + Mentor ZPS/Sinh viên — "Nội dung học" (buổi phụ trách),
+  // cùng dữ liệu thật với Thời khóa biểu (sessions.trainer_profile_ids /
+  // sessions.mentor_profile_ids). Xem SessionsCell + updateMemberSessions.
+  sessionIds?: string[] | null;
 }
 
 const STATUS_LABEL: Record<MemberRowData["status"], string> = {
@@ -46,18 +52,22 @@ const STATUS_VARIANT: Record<MemberRowData["status"], "neutral" | "success" | "w
   archived: "neutral",
 };
 
+const SESSION_ROLES = new Set<string>(["trainer", "mentor_zps", "mentor_student"]);
+
 export function MemberRow({
   member,
   programId,
   editable,
   currentUserId,
   groups,
+  sessionOptions,
 }: {
   member: MemberRowData;
   programId: string;
   editable: boolean;
   currentUserId: string;
   groups: { id: string; name: string }[];
+  sessionOptions: { id: string; label: string }[];
 }) {
   const router = useRouter();
   const [pending, setPending] = React.useState(false);
@@ -117,7 +127,7 @@ export function MemberRow({
   const isGroupRole = GROUP_ROLES.has(member.role);
 
   return (
-    <tr className="border-b border-border last:border-0">
+    <tr id={member.profiles?.id ? `member-${member.profiles.id}` : undefined} className="scroll-mt-20 border-b border-border last:border-0">
       <td className="px-5 py-3">
         <div className="flex items-center gap-2.5">
           <Avatar name={name} size={28} />
@@ -145,6 +155,23 @@ export function MemberRow({
           </select>
         ) : (
           <span className="text-[13px] text-text-primary">{ROLE_LABELS[member.role]}</span>
+        )}
+      </td>
+      <td className="px-5 py-3">
+        {SESSION_ROLES.has(member.role) ? (
+          canModerate ? (
+            <SessionsCell
+              programId={programId}
+              profileId={member.profiles?.id ?? null}
+              role={member.role}
+              sessionOptions={sessionOptions}
+              initialSessionIds={member.sessionIds ?? []}
+            />
+          ) : (
+            <SessionsSummary sessionOptions={sessionOptions} sessionIds={member.sessionIds ?? []} />
+          )
+        ) : (
+          <span className="text-[12px] text-text-secondary">—</span>
         )}
       </td>
       <td className="px-5 py-3">
@@ -298,6 +325,115 @@ function TrainerGroupsCell({
             <input type="checkbox" checked={selected.has(g.id)} onChange={() => toggle(g.id)} />
             {g.name}
           </label>
+        ))}
+      </div>
+      <div className="mt-1.5 flex items-center gap-2">
+        <button
+          type="button"
+          disabled={pending}
+          onClick={handleSave}
+          className="rounded-md border border-border px-2 py-1 text-[11px] font-semibold text-text-primary hover:bg-border/60 disabled:opacity-50"
+        >
+          {pending ? "Đang lưu…" : "Lưu"}
+        </button>
+        {saved && !pending && <span className="text-[11px] font-medium text-success">Đã lưu.</span>}
+        {error && <span className="text-[11px] font-medium text-risk">{error}</span>}
+      </div>
+    </div>
+  );
+}
+
+function SessionsSummary({
+  sessionOptions,
+  sessionIds,
+}: {
+  sessionOptions: { id: string; label: string }[];
+  sessionIds: string[];
+}) {
+  const assigned = sessionOptions.filter((s) => sessionIds.includes(s.id));
+  if (assigned.length === 0) {
+    return <span className="text-[13px] text-text-primary">— Chưa gán —</span>;
+  }
+  return (
+    <div className="flex flex-col gap-0.5">
+      {assigned.map((s) => (
+        <Link
+          key={s.id}
+          href={`/app/schedule/${s.id}`}
+          className="truncate text-[12px] font-medium text-brand-orange-3 hover:underline"
+          title={s.label}
+        >
+          {s.label}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+function SessionsCell({
+  programId,
+  profileId,
+  role,
+  sessionOptions,
+  initialSessionIds,
+}: {
+  programId: string;
+  profileId: string | null;
+  role: Role;
+  sessionOptions: { id: string; label: string }[];
+  initialSessionIds: string[];
+}) {
+  const router = useRouter();
+  const [selected, setSelected] = React.useState<Set<string>>(new Set(initialSessionIds));
+  const [pending, setPending] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [saved, setSaved] = React.useState(false);
+
+  function toggle(id: string) {
+    setSaved(false);
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleSave() {
+    if (!profileId) return;
+    setPending(true);
+    setError(null);
+    setSaved(false);
+    const result = await updateMemberSessions(profileId, programId, role, Array.from(selected));
+    setPending(false);
+    if (result.error) setError(result.error);
+    else {
+      setSaved(true);
+      router.refresh();
+    }
+  }
+
+  if (sessionOptions.length === 0) {
+    return <span className="text-[12px] text-text-secondary">Chương trình chưa có buổi học nào.</span>;
+  }
+
+  return (
+    <div className="min-w-[220px]">
+      <div className="max-h-32 space-y-1 overflow-y-auto rounded-lg border border-border p-2">
+        {sessionOptions.map((s) => (
+          <div key={s.id} className="flex items-center gap-1.5">
+            <label className="flex min-w-0 flex-1 items-center gap-1.5 text-[11.5px] text-text-primary">
+              <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggle(s.id)} />
+              <span className="truncate">{s.label}</span>
+            </label>
+            <Link
+              href={`/app/schedule/${s.id}`}
+              className="shrink-0 text-[11px] text-text-secondary hover:text-brand-orange-3"
+              title="Xem buổi học"
+            >
+              ↗
+            </Link>
+          </div>
         ))}
       </div>
       <div className="mt-1.5 flex items-center gap-2">
