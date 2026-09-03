@@ -28,7 +28,7 @@ export default async function PeoplePage() {
   const [{ data: members }, { data: groups }, { data: sessionRows }] = await Promise.all([
     supabase
       .from("program_memberships")
-      .select("id, role, status, invited_email, created_at, profiles ( id, full_name, display_name, email )")
+      .select("id, role, status, invited_email, created_at, profiles!program_memberships_profile_id_fkey ( id, full_name, display_name, email )")
       .eq("program_id", user.programId)
       .order("created_at", { ascending: true })
       .returns<MemberRowData[]>(),
