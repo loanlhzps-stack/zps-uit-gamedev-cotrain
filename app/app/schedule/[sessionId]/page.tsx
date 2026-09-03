@@ -86,7 +86,7 @@ export default async function SessionDetailPage({
   if (isOwnerOrCo) {
     const { data: trainerMembers } = await supabase
       .from("program_memberships")
-      .select("profiles ( id, display_name )")
+      .select("profiles!program_memberships_profile_id_fkey ( id, display_name )")
       .eq("program_id", user.programId)
       .eq("role", "trainer")
       .eq("status", "active")
