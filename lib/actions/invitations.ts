@@ -388,7 +388,12 @@ export async function updateMemberSessions(
   role: Role,
   sessionIds: string[]
 ): Promise<ActionResult> {
-  const column = role === "trainer" ? "trainer_profile_ids" : role === "mentor_zps" || role === "mentor_student" ? "mentor_profile_ids" : null;
+  const column =
+    role === "trainer" || role === "owner" || role === "co_owner"
+      ? "trainer_profile_ids"
+      : role === "mentor_zps" || role === "mentor_student"
+        ? "mentor_profile_ids"
+        : null;
   if (!column) {
     return { error: "Vai trò này không gán theo buổi học." };
   }

@@ -52,7 +52,7 @@ const STATUS_VARIANT: Record<MemberRowData["status"], "neutral" | "success" | "w
   archived: "neutral",
 };
 
-const SESSION_ROLES = new Set<string>(["trainer", "mentor_zps", "mentor_student"]);
+const SESSION_ROLES = new Set<string>(["trainer", "mentor_zps", "mentor_student", "owner", "co_owner"]);
 
 export function MemberRow({
   member,

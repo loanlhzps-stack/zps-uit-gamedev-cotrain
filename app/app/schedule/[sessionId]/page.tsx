@@ -91,7 +91,7 @@ export default async function SessionDetailPage({
       .from("program_memberships")
       .select("profiles!program_memberships_profile_id_fkey ( id, display_name )")
       .eq("program_id", user.programId)
-      .eq("role", "trainer")
+      .in("role", ["trainer", "owner", "co_owner"])
       .eq("status", "active")
       .returns<{ profiles: { id: string; display_name: string } | null }[]>();
     allTrainers = (trainerMembers ?? [])

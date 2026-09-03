@@ -123,7 +123,7 @@ export default async function PeoplePage() {
     const trainerGroupNames = member.role === "trainer" ? (trainerGroupNamesByProfile.get(profileId) ?? []) : null;
     const trainerGroupIds = member.role === "trainer" ? (trainerGroupIdsByProfile.get(profileId) ?? []) : null;
     const sessionIds =
-      member.role === "trainer"
+      member.role === "trainer" || member.role === "owner" || member.role === "co_owner"
         ? (sessionIdsByTrainerProfile.get(profileId) ?? [])
         : member.role === "mentor_zps" || member.role === "mentor_student"
           ? (sessionIdsByMentorProfile.get(profileId) ?? [])
