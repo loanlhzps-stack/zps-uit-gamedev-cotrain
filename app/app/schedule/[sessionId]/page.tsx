@@ -10,6 +10,7 @@ import { SessionStatusBadge } from "@/components/schedule/session-status-badge";
 import { SessionEditForm } from "@/components/schedule/session-edit-form";
 import { formatSessionDate, formatSessionWeekday, getSessionStatusDisplay } from "@/lib/format/schedule";
 import type { SessionStatus } from "@/lib/constants/statuses";
+import { ROLE_LABELS, type Role } from "@/lib/constants/roles";
 
 interface SessionDetailRow {
   id: string;
@@ -17,6 +18,7 @@ interface SessionDetailRow {
   location: string | null;
   status: SessionStatus;
   trainer_profile_ids: string[];
+  mentor_profile_ids: string[];
   survey_url: string | null;
   internal_notes: string | null;
   post_session_reflection: string | null;
@@ -59,7 +61,7 @@ export default async function SessionDetailPage({
   const { data: session } = await supabase
     .from("sessions")
     .select(
-      "id, session_date, location, status, trainer_profile_ids, survey_url, internal_notes, post_session_reflection, session_blocks(id, title, sort_order, materials_url)"
+      "id, session_date, location, status, trainer_profile_ids, mentor_profile_ids, survey_url, internal_notes, post_session_reflection, session_blocks(id, title, sort_order, materials_url)"
     )
     .eq("id", sessionId)
     .eq("program_id", user.programId)
@@ -93,6 +95,28 @@ export default async function SessionDetailPage({
       .returns<{ profiles: { id: string; display_name: string } | null }[]>();
     allTrainers = (trainerMembers ?? [])
       .map((m) => m.profiles)
+      .filter((p): p is { id: string; display_name: string } => p !== null);
+  }
+
+  const { data: mentorProfiles } = session.mentor_profile_ids.length
+    ? await supabase.from("profiles").select("id, display_name").in("id", session.mentor_profile_ids)
+    : { data: [] as { id: string; display_name: string }[] };
+
+  let allMentors: { id: string; display_name: string }[] = [];
+  if (isOwnerOrCo) {
+    const { data: mentorMembers } = await supabase
+      .from("program_memberships")
+      .select("role, profiles!program_memberships_profile_id_fkey ( id, display_name )")
+      .eq("program_id", user.programId)
+      .in("role", ["mentor_zps", "mentor_student"])
+      .eq("status", "active")
+      .returns<{ role: string; profiles: { id: string; display_name: string } | null }[]>();
+    allMentors = (mentorMembers ?? [])
+      .map((m) =>
+        m.profiles
+          ? { id: m.profiles.id, display_name: `${m.profiles.display_name} (${ROLE_LABELS[m.role as Role]})` }
+          : null
+      )
       .filter((p): p is { id: string; display_name: string } => p !== null);
   }
 
@@ -160,6 +184,15 @@ export default async function SessionDetailPage({
             </p>
           </div>
 
+          <div>
+            <h3 className="mb-1 text-[13px] font-bold text-text-primary">Mentor phụ trách</h3>
+            <p className="text-[13px] text-text-secondary">
+              {mentorProfiles && mentorProfiles.length > 0
+                ? mentorProfiles.map((m) => m.display_name).join(", ")
+                : "Chưa gán Mentor."}
+            </p>
+          </div>
+
           {showSurvey && (
             <a
               href={session.survey_url!}
@@ -206,6 +239,8 @@ export default async function SessionDetailPage({
           blocks={session.session_blocks}
           allTrainers={allTrainers}
           assignedTrainerIds={session.trainer_profile_ids}
+          allMentors={allMentors}
+          assignedMentorIds={session.mentor_profile_ids}
         />
       )}
     </div>

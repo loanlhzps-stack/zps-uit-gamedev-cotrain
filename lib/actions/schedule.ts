@@ -284,6 +284,24 @@ export async function assignTrainers(sessionId: string, trainerProfileIds: strin
   return {};
 }
 
+export async function assignMentors(sessionId: string, mentorProfileIds: string[]): Promise<ActionResult> {
+  const access = await getSessionAccess(sessionId);
+  if (!access.ok) return { error: access.error };
+  if (!access.isOwnerOrCo) {
+    return { error: "Chỉ Owner/Co-owner mới có thể gán Mentor." };
+  }
+
+  const { error } = await access.supabase
+    .from("sessions")
+    .update({ mentor_profile_ids: mentorProfileIds })
+    .eq("id", sessionId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/app/schedule/${sessionId}`);
+  revalidatePath("/app/schedule");
+  return {};
+}
+
 /**
  * Section 10.1/4.2 — was intentionally out of scope in Phase 5 (README:
  * "Không có UI tạo/xoá buổi học mới", schedule was 16 fixed seeded

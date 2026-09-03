@@ -10,6 +10,7 @@ import {
   addSessionBlock,
   deleteSessionBlock,
   assignTrainers,
+  assignMentors,
   deleteSession,
 } from "@/lib/actions/schedule";
 
@@ -32,6 +33,8 @@ export function SessionEditForm({
   blocks,
   allTrainers,
   assignedTrainerIds,
+  allMentors,
+  assignedMentorIds,
 }: {
   sessionId: string;
   programId: string;
@@ -45,6 +48,8 @@ export function SessionEditForm({
   blocks: BlockInput[];
   allTrainers: { id: string; display_name: string }[];
   assignedTrainerIds: string[];
+  allMentors: { id: string; display_name: string }[];
+  assignedMentorIds: string[];
 }) {
   const [metaPending, setMetaPending] = React.useState(false);
   const [metaError, setMetaError] = React.useState<string | null>(null);
@@ -199,6 +204,16 @@ export function SessionEditForm({
               sessionId={sessionId}
               allTrainers={allTrainers}
               assignedTrainerIds={assignedTrainerIds}
+            />
+          </div>
+        )}
+
+        {isOwnerOrCo && (
+          <div className="border-t border-border pt-4">
+            <MentorAssignment
+              sessionId={sessionId}
+              allMentors={allMentors}
+              assignedMentorIds={assignedMentorIds}
             />
           </div>
         )}
@@ -363,6 +378,67 @@ function TrainerAssignment({
       <div className="mt-2.5 flex items-center gap-2">
         <Button type="button" size="sm" variant="secondary" onClick={handleSave} disabled={pending}>
           {pending ? "Đang lưu…" : "Lưu Trainer"}
+        </Button>
+        {error && <span className="text-[11px] font-medium text-risk">{error}</span>}
+      </div>
+    </div>
+  );
+}
+
+function MentorAssignment({
+  sessionId,
+  allMentors,
+  assignedMentorIds,
+}: {
+  sessionId: string;
+  allMentors: { id: string; display_name: string }[];
+  assignedMentorIds: string[];
+}) {
+  const [selected, setSelected] = React.useState<Set<string>>(new Set(assignedMentorIds));
+  const [pending, setPending] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleSave() {
+    setPending(true);
+    setError(null);
+    const result = await assignMentors(sessionId, Array.from(selected));
+    setPending(false);
+    if (result.error) setError(result.error);
+  }
+
+  return (
+    <div>
+      <h3 className="mb-2 text-[13px] font-bold text-text-primary">Gán Mentor phụ trách</h3>
+      <p className="mb-2 text-[12px] text-text-secondary">
+        Dùng cho buổi thực hành — chọn Mentor ZPS/Mentor Sinh viên phụ trách, ngoài Trainer.
+      </p>
+      {allMentors.length === 0 ? (
+        <p className="text-[13px] text-text-secondary">Chưa có tài khoản Mentor active nào trong chương trình.</p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {allMentors.map((m) => (
+            <label
+              key={m.id}
+              className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-[12px] font-medium text-text-primary"
+            >
+              <input type="checkbox" checked={selected.has(m.id)} onChange={() => toggle(m.id)} />
+              {m.display_name}
+            </label>
+          ))}
+        </div>
+      )}
+      <div className="mt-2.5 flex items-center gap-2">
+        <Button type="button" size="sm" variant="secondary" onClick={handleSave} disabled={pending}>
+          {pending ? "Đang lưu…" : "Lưu Mentor"}
         </Button>
         {error && <span className="text-[11px] font-medium text-risk">{error}</span>}
       </div>

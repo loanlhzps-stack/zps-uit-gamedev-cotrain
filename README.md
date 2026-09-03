@@ -210,6 +210,10 @@ Chưa có (đã hoàn thành đủ 10 bước trong chuỗi build mục 25; các
   - `NEXT_PUBLIC_APP_URL` không còn được dùng ở `invitations.ts` (trước dùng làm `redirectTo` cho `inviteUserByEmail`) — route `/auth/callback` vẫn giữ nguyên, không xoá (không ai gọi tới trong luồng mới, nhưng vô hại, để sẵn phòng khi cần thêm "Quên mật khẩu" qua email sau này).
   - tsc/eslint sạch.
 
+- **Sửa bug "danh sách trống" ở Quản lý thành viên + gán Trainer cho buổi học:** `program_memberships` có 2 khóa ngoại tới `profiles` (`profile_id`, `invited_by`), nên câu query embed `profiles ( ... )` không rõ khóa nào — PostgREST trả lỗi "ambiguous relationship" âm thầm (code chỉ lấy `data`, không kiểm tra `error`), khiến `app/app/people/page.tsx` (bảng "Thành viên chương trình") và `app/app/schedule/[sessionId]/page.tsx` (chọn Trainer phụ trách buổi học) luôn hiện rỗng dù dữ liệu thật đã có đủ. Sửa bằng cách chỉ rõ khóa ngoại: `profiles!program_memberships_profile_id_fkey ( ... )`. Đã rà toàn bộ codebase, không còn chỗ nào khác dùng embed `profiles ( ... )` mơ hồ kiểu này. tsc/eslint sạch.
+
+- **Gán Mentor phụ trách cho buổi học (theo yêu cầu của bạn, cho buổi thực hành):** trước đó buổi học chỉ gán được Trainer. Thêm cột `sessions.mentor_profile_ids` (mảng UUID, giống mẫu `trainer_profile_ids` — xem `supabase/migrations/0019_session_mentor_assignments.sql`, **bạn cần tự chạy migration này** trong Supabase SQL Editor), action `assignMentors` (`lib/actions/schedule.ts`, chỉ Owner/Co-owner), và mục "Gán Mentor phụ trách" mới trong `SessionEditForm` (`components/schedule/session-edit-form.tsx`) — liệt kê Mentor ZPS + Mentor Sinh viên đang active, chọn nhiều người/buổi. Cố ý **không** thêm cột phân loại "buổi lý thuyết/thực hành" (theo lựa chọn của bạn) — mục Mentor hiện ở MỌI buổi, Owner tự quyết định buổi nào cần gán dựa vào tên buổi/learning block có sẵn. tsc/eslint sạch.
+
 ## Bắt đầu
 
 ```bash
