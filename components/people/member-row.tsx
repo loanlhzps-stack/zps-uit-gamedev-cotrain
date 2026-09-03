@@ -129,7 +129,7 @@ export function MemberRow({
   return (
     <tr id={member.profiles?.id ? `member-${member.profiles.id}` : undefined} className="scroll-mt-20 border-b border-border last:border-0">
       <td className="px-5 py-3">
-        <div className="flex items-center gap-2.5">
+        <div className="flex max-w-[190px] items-center gap-2.5">
           <Avatar name={name} size={28} />
           <div className="min-w-0">
             <p className="truncate text-[13px] font-bold text-text-primary">
@@ -315,7 +315,7 @@ function TrainerGroupsCell({
   }
 
   return (
-    <div className="min-w-[180px]">
+    <div className="w-[160px]">
       <div className="flex flex-wrap gap-1">
         {groups.map((g) => (
           <label
@@ -355,7 +355,7 @@ function SessionsSummary({
     return <span className="text-[13px] text-text-primary">— Chưa gán —</span>;
   }
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex max-w-[200px] flex-col gap-0.5">
       {assigned.map((s) => (
         <Link
           key={s.id}
@@ -418,13 +418,15 @@ function SessionsCell({
   }
 
   return (
-    <div className="min-w-[220px]">
+    <div className="w-[200px]">
       <div className="max-h-32 space-y-1 overflow-y-auto rounded-lg border border-border p-2">
         {sessionOptions.map((s) => (
           <div key={s.id} className="flex items-center gap-1.5">
             <label className="flex min-w-0 flex-1 items-center gap-1.5 text-[11.5px] text-text-primary">
-              <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggle(s.id)} />
-              <span className="truncate">{s.label}</span>
+              <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggle(s.id)} className="shrink-0" />
+              <span className="min-w-0 truncate" title={s.label}>
+                {s.label}
+              </span>
             </label>
             <Link
               href={`/app/schedule/${s.id}`}
