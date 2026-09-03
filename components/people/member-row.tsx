@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { ROLES, ROLE_LABELS, GROUP_ASSIGNABLE_ROLES, type Role } from "@/lib/constants/roles";
@@ -58,6 +59,7 @@ export function MemberRow({
   currentUserId: string;
   groups: { id: string; name: string }[];
 }) {
+  const router = useRouter();
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [newPassword, setNewPassword] = React.useState<string | null>(null);
@@ -71,6 +73,7 @@ export function MemberRow({
     const result = await changeMemberRole(member.id, programId, next);
     setPending(false);
     if (result.error) setError(result.error);
+    else router.refresh();
   }
 
   async function handleStatusChange(next: "active" | "suspended" | "archived") {
@@ -79,6 +82,7 @@ export function MemberRow({
     const result = await changeMemberStatus(member.id, programId, next);
     setPending(false);
     if (result.error) setError(result.error);
+    else router.refresh();
   }
 
   async function handleGroupChange(nextGroupId: string) {
@@ -88,6 +92,7 @@ export function MemberRow({
     const result = await changeMemberGroup(member.id, programId, member.profiles.id, member.role, nextGroupId);
     setPending(false);
     if (result.error) setError(result.error);
+    else router.refresh();
   }
 
   // "Đặt lại mật khẩu" (theo yêu cầu của bạn — thay cho re-invite khi
@@ -102,7 +107,10 @@ export function MemberRow({
     const result = await resetMemberPassword(member.profiles.id, programId);
     setPending(false);
     if (result.error) setError(result.error);
-    else if (result.password) setNewPassword(result.password);
+    else if (result.password) {
+      setNewPassword(result.password);
+      router.refresh();
+    }
   }
 
   const canModerate = editable && !isSelf;
@@ -249,6 +257,7 @@ function TrainerGroupsCell({
   groups: { id: string; name: string }[];
   initialGroupIds: string[];
 }) {
+  const router = useRouter();
   const [selected, setSelected] = React.useState<Set<string>>(new Set(initialGroupIds));
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -272,7 +281,10 @@ function TrainerGroupsCell({
     const result = await updateTrainerGroups(profileId, programId, Array.from(selected));
     setPending(false);
     if (result.error) setError(result.error);
-    else setSaved(true);
+    else {
+      setSaved(true);
+      router.refresh();
+    }
   }
 
   return (

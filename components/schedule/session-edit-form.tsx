@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SESSION_STATUSES, SESSION_STATUS_LABELS, type SessionStatus } from "@/lib/constants/statuses";
@@ -51,6 +52,7 @@ export function SessionEditForm({
   allMentors: { id: string; display_name: string }[];
   assignedMentorIds: string[];
 }) {
+  const router = useRouter();
   const [metaPending, setMetaPending] = React.useState(false);
   const [metaError, setMetaError] = React.useState<string | null>(null);
   const [metaSaved, setMetaSaved] = React.useState(false);
@@ -64,7 +66,10 @@ export function SessionEditForm({
     const result = await updateSessionMeta(sessionId, formData);
     setMetaPending(false);
     if (result.error) setMetaError(result.error);
-    else setMetaSaved(true);
+    else {
+      setMetaSaved(true);
+      router.refresh();
+    }
   }
 
   return (
@@ -239,6 +244,7 @@ function BlockMaterialsField({
   isOwnerOrCo: boolean;
   canDelete: boolean;
 }) {
+  const router = useRouter();
   const [value, setValue] = React.useState(block.materials_url ?? "");
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -252,6 +258,7 @@ function BlockMaterialsField({
     const result = await updateSessionBlockMaterials(sessionId, block.id, value);
     setPending(false);
     if (result.error) setError(result.error);
+    else router.refresh();
   }
 
   async function handleDelete() {
@@ -264,6 +271,7 @@ function BlockMaterialsField({
     const result = await deleteSessionBlock(sessionId, block.id);
     setDeletePending(false);
     if (result.error) setError(result.error);
+    else router.refresh();
   }
 
   return (
@@ -297,6 +305,7 @@ function BlockMaterialsField({
 }
 
 function AddBlockField({ sessionId }: { sessionId: string }) {
+  const router = useRouter();
   const [title, setTitle] = React.useState("");
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -308,7 +317,10 @@ function AddBlockField({ sessionId }: { sessionId: string }) {
     const result = await addSessionBlock(sessionId, title);
     setPending(false);
     if (result.error) setError(result.error);
-    else setTitle("");
+    else {
+      setTitle("");
+      router.refresh();
+    }
   }
 
   return (
@@ -336,6 +348,7 @@ function TrainerAssignment({
   allTrainers: { id: string; display_name: string }[];
   assignedTrainerIds: string[];
 }) {
+  const router = useRouter();
   const [selected, setSelected] = React.useState<Set<string>>(new Set(assignedTrainerIds));
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -355,6 +368,7 @@ function TrainerAssignment({
     const result = await assignTrainers(sessionId, Array.from(selected));
     setPending(false);
     if (result.error) setError(result.error);
+    else router.refresh();
   }
 
   return (
@@ -394,6 +408,7 @@ function MentorAssignment({
   allMentors: { id: string; display_name: string }[];
   assignedMentorIds: string[];
 }) {
+  const router = useRouter();
   const [selected, setSelected] = React.useState<Set<string>>(new Set(assignedMentorIds));
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -413,6 +428,7 @@ function MentorAssignment({
     const result = await assignMentors(sessionId, Array.from(selected));
     setPending(false);
     if (result.error) setError(result.error);
+    else router.refresh();
   }
 
   return (
