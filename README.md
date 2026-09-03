@@ -214,6 +214,8 @@ Chưa có (đã hoàn thành đủ 10 bước trong chuỗi build mục 25; các
 
 - **Gán Mentor phụ trách cho buổi học (theo yêu cầu của bạn, cho buổi thực hành):** trước đó buổi học chỉ gán được Trainer. Thêm cột `sessions.mentor_profile_ids` (mảng UUID, giống mẫu `trainer_profile_ids` — xem `supabase/migrations/0019_session_mentor_assignments.sql`, **bạn cần tự chạy migration này** trong Supabase SQL Editor), action `assignMentors` (`lib/actions/schedule.ts`, chỉ Owner/Co-owner), và mục "Gán Mentor phụ trách" mới trong `SessionEditForm` (`components/schedule/session-edit-form.tsx`) — liệt kê Mentor ZPS + Mentor Sinh viên đang active, chọn nhiều người/buổi. Cố ý **không** thêm cột phân loại "buổi lý thuyết/thực hành" (theo lựa chọn của bạn) — mục Mentor hiện ở MỌI buổi, Owner tự quyết định buổi nào cần gán dựa vào tên buổi/learning block có sẵn. tsc/eslint sạch.
 
+- **"Nhóm phụ trách" của Trainer giờ sửa được sau khi tạo tài khoản (theo yêu cầu của bạn):** trước đó trường này (`trainer_group_assignments`) chỉ ghi được đúng 1 lần lúc tạo tài khoản (`inviteMember`), không có chỗ sửa lại. Thêm action `updateTrainerGroups` (`lib/actions/invitations.ts`, chỉ Owner, thay toàn bộ danh sách nhóm) + ô chọn nhiều nhóm ngay tại Quản lý thành viên (`TrainerGroupsCell` trong `components/people/member-row.tsx`). Đã xác nhận rõ với bạn: đây là trường **độc lập** với buổi học (`sessions.trainer_profile_ids`, vẫn chỉ gán qua Thời khóa biểu) và với "Nhóm" của student/mentor — không gộp, không tính chéo qua nhau, chỉ mang tính hiển thị/thông tin, không giới hạn quyền Trainer. tsc/eslint sạch.
+
 ## Bắt đầu
 
 ```bash

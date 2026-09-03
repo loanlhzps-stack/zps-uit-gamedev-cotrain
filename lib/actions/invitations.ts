@@ -338,6 +338,43 @@ export async function changeMemberGroup(
 }
 
 /**
+ * "Nhóm phụ trách" của Trainer (0018_trainer_group_assignments.sql) — theo
+ * yêu cầu của bạn, đây là trường ĐỘC LẬP với buổi học (sessions.trainer_
+ * profile_ids, gán qua Thời khóa biểu) và với "Nhóm" của student/mentor
+ * (changeMemberGroup ở trên) — chỉ mang tính thông tin/hiển thị ở Quản lý
+ * thành viên, không giới hạn quyền gán bài tập của Trainer. Trước đây chỉ
+ * ghi được đúng 1 lần lúc tạo tài khoản (inviteMember), giờ sửa lại được
+ * tại đây — 1 Trainer có thể phụ trách nhiều nhóm nên nhận thẳng danh
+ * sách groupIds (thay toàn bộ, không phải upsert từng cái).
+ */
+export async function updateTrainerGroups(profileId: string, programId: string, groupIds: string[]): Promise<ActionResult> {
+  const guard = await requireOwner(programId);
+  if (!guard.ok) return { error: guard.error };
+  const { supabase } = guard;
+
+  const { data: programGroups } = await supabase.from("groups").select("id").eq("program_id", programId);
+  const programGroupIds = new Set((programGroups ?? []).map((g) => g.id));
+  const validGroupIds = groupIds.filter((id) => programGroupIds.has(id));
+
+  if (programGroupIds.size > 0) {
+    await supabase
+      .from("trainer_group_assignments")
+      .delete()
+      .eq("profile_id", profileId)
+      .in("group_id", Array.from(programGroupIds));
+  }
+  if (validGroupIds.length > 0) {
+    const { error } = await supabase
+      .from("trainer_group_assignments")
+      .insert(validGroupIds.map((groupId) => ({ group_id: groupId, profile_id: profileId })));
+    if (error) return { error: error.message };
+  }
+
+  revalidatePath("/app/people");
+  return {};
+}
+
+/**
  * "Đặt lại mật khẩu" — Owner-only (theo yêu cầu của bạn, thay cho việc
  * dùng lại inviteMember/re-invite khi ai đó quên mật khẩu: re-invite sẽ
  * gọi lại admin.createUser/inviteUserByEmail và có thể gửi lại mail —

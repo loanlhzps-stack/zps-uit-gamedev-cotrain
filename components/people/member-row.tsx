@@ -4,7 +4,13 @@ import * as React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { ROLES, ROLE_LABELS, GROUP_ASSIGNABLE_ROLES, type Role } from "@/lib/constants/roles";
-import { changeMemberRole, changeMemberStatus, changeMemberGroup, resetMemberPassword } from "@/lib/actions/invitations";
+import {
+  changeMemberRole,
+  changeMemberStatus,
+  changeMemberGroup,
+  updateTrainerGroups,
+  resetMemberPassword,
+} from "@/lib/actions/invitations";
 
 const GROUP_ROLES = new Set<string>(GROUP_ASSIGNABLE_ROLES);
 
@@ -16,11 +22,13 @@ export interface MemberRowData {
   profiles: { id: string; full_name: string; display_name: string; email: string | null } | null;
   groupId?: string | null;
   groupName?: string | null;
-  // Trainer only — thông tin/hiển thị (0018_trainer_group_assignments.sql),
-  // 1 Trainer có thể phụ trách nhiều nhóm nên là mảng, khác groupId/groupName
-  // (1 nhóm) của student/mentor ở trên. Không có control sửa ở đây — sửa
-  // qua mời lại/Thời khóa biểu, xem invite-member-form.tsx.
+  // Trainer only — "Nhóm phụ trách" (0018_trainer_group_assignments.sql),
+  // ĐỘC LẬP với buổi học (gán qua Thời khóa biểu) và với "Nhóm" của
+  // student/mentor ở trên (groupId/groupName, 1 nhóm/người) — 1 Trainer
+  // có thể phụ trách nhiều nhóm nên là mảng. Sửa được ngay tại dòng này,
+  // xem updateTrainerGroups.
   trainerGroupNames?: string[] | null;
+  trainerGroupIds?: string[] | null;
 }
 
 const STATUS_LABEL: Record<MemberRowData["status"], string> = {
@@ -151,11 +159,20 @@ export function MemberRow({
             <span className="text-[13px] text-text-primary">{member.groupName ?? "— Chưa gán —"}</span>
           )
         ) : member.role === "trainer" ? (
-          <span className="text-[13px] text-text-primary">
-            {member.trainerGroupNames && member.trainerGroupNames.length > 0
-              ? member.trainerGroupNames.join(", ")
-              : "— Chưa gán —"}
-          </span>
+          canModerate ? (
+            <TrainerGroupsCell
+              programId={programId}
+              profileId={member.profiles?.id ?? null}
+              groups={groups}
+              initialGroupIds={member.trainerGroupIds ?? []}
+            />
+          ) : (
+            <span className="text-[13px] text-text-primary">
+              {member.trainerGroupNames && member.trainerGroupNames.length > 0
+                ? member.trainerGroupNames.join(", ")
+                : "— Chưa gán —"}
+            </span>
+          )
         ) : (
           <span className="text-[12px] text-text-secondary">—</span>
         )}
@@ -218,5 +235,71 @@ export function MemberRow({
         )}
       </td>
     </tr>
+  );
+}
+
+function TrainerGroupsCell({
+  programId,
+  profileId,
+  groups,
+  initialGroupIds,
+}: {
+  programId: string;
+  profileId: string | null;
+  groups: { id: string; name: string }[];
+  initialGroupIds: string[];
+}) {
+  const [selected, setSelected] = React.useState<Set<string>>(new Set(initialGroupIds));
+  const [pending, setPending] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [saved, setSaved] = React.useState(false);
+
+  function toggle(id: string) {
+    setSaved(false);
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleSave() {
+    if (!profileId) return;
+    setPending(true);
+    setError(null);
+    setSaved(false);
+    const result = await updateTrainerGroups(profileId, programId, Array.from(selected));
+    setPending(false);
+    if (result.error) setError(result.error);
+    else setSaved(true);
+  }
+
+  return (
+    <div className="min-w-[180px]">
+      <div className="flex flex-wrap gap-1">
+        {groups.map((g) => (
+          <label
+            key={g.id}
+            className="flex items-center gap-1 rounded-md border border-border px-1.5 py-1 text-[11px] font-medium text-text-primary"
+          >
+            <input type="checkbox" checked={selected.has(g.id)} onChange={() => toggle(g.id)} />
+            {g.name}
+          </label>
+        ))}
+      </div>
+      <div className="mt-1.5 flex items-center gap-2">
+        <button
+          type="button"
+          disabled={pending}
+          onClick={handleSave}
+          className="rounded-md border border-border px-2 py-1 text-[11px] font-semibold text-text-primary hover:bg-border/60 disabled:opacity-50"
+        >
+          {pending ? "Đang lưu…" : "Lưu"}
+        </button>
+        {saved && !pending && <span className="text-[11px] font-medium text-success">Đã lưu.</span>}
+        {error && <span className="text-[11px] font-medium text-risk">{error}</span>}
+      </div>
+    </div>
   );
 }

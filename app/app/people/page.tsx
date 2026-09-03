@@ -67,6 +67,7 @@ export default async function PeoplePage() {
   // 1 Trainer có thể phụ trách nhiều nhóm nên map ra mảng tên, khác 2 map
   // 1-nhóm-1-người ở trên (student/mentor).
   const trainerGroupNamesByProfile = new Map<string, string[]>();
+  const trainerGroupIdsByProfile = new Map<string, string[]>();
   if (groupIds.length > 0) {
     const [{ data: groupMembers }, { data: mentorAssignments }, { data: trainerGroups }] = await Promise.all([
       supabase.from("group_members").select("profile_id, group_id").in("group_id", groupIds),
@@ -78,9 +79,12 @@ export default async function PeoplePage() {
     for (const tg of trainerGroups ?? []) {
       const name = groupNameById.get(tg.group_id);
       if (!name) continue;
-      const list = trainerGroupNamesByProfile.get(tg.profile_id) ?? [];
-      list.push(name);
-      trainerGroupNamesByProfile.set(tg.profile_id, list);
+      const nameList = trainerGroupNamesByProfile.get(tg.profile_id) ?? [];
+      nameList.push(name);
+      trainerGroupNamesByProfile.set(tg.profile_id, nameList);
+      const idList = trainerGroupIdsByProfile.get(tg.profile_id) ?? [];
+      idList.push(tg.group_id);
+      trainerGroupIdsByProfile.set(tg.profile_id, idList);
     }
   }
 
@@ -94,11 +98,13 @@ export default async function PeoplePage() {
       groupId = mentorGroupByProfile.get(`${profileId}:${member.role}`) ?? null;
     }
     const trainerGroupNames = member.role === "trainer" ? (trainerGroupNamesByProfile.get(profileId) ?? []) : null;
+    const trainerGroupIds = member.role === "trainer" ? (trainerGroupIdsByProfile.get(profileId) ?? []) : null;
     return {
       ...member,
       groupId,
       groupName: groupId ? (groupNameById.get(groupId) ?? null) : null,
       trainerGroupNames,
+      trainerGroupIds,
     };
   });
 
